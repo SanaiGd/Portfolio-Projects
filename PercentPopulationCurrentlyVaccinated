@@ -1,0 +1,75 @@
+--Let's select the data we'll be using.
+SELECT coviddeaths.location, total_cases, new_cases, total_deaths, coviddeaths.population 
+FROM coviddeaths
+ORDER BY 1,2; 
+
+--Looking at Total Cases vs Total Deaths
+SELECT coviddeaths.location, total_cases, total_deaths, SUM(round(total_deaths*100/total_cases,2)) 
+AS Death_Percentage
+FROM coviddeaths
+WHERE location = 'Brazil'
+GROUP BY coviddeaths.location, total_cases, total_deaths;
+
+--Looking at countries with highest infection rate vs population.
+SELECT coviddeaths.location, MAX(total_cases) AS HighestInfection, new_cases, total_deaths, coviddeaths.population, 
+MAX(round(total_deaths*100/total_cases,2)) AS PercentPopulationInfected
+FROM coviddeaths
+GROUP BY coviddeaths.location, coviddeaths.population, new_cases, total_deaths
+ORDER BY highestinfection DESC;
+
+--Showing countries with highest death count per population.
+SELECT coviddeaths.location, MAX(total_deaths) AS TotalDeathCount 
+FROM coviddeaths
+WHERE total_deaths IS NOT null
+GROUP BY coviddeaths.location 
+ORDER BY coviddeaths.location DESC;
+
+--Global numbers
+SELECT coviddeaths.date_reported, SUM(new_cases)
+FROM coviddeaths
+WHERE new_cases IS NOT null
+GROUP BY coviddeaths.date_reported
+ORDER BY SUM(new_cases) DESC;
+
+SELECT SUM(new_cases) AS TotalCases, SUM(new_deaths) AS TotalDeaths, SUM(new_deaths*100)/SUM(new_cases) AS DeathPercentage
+FROM coviddeaths;
+
+--Looking at total population vs vaccinations
+SELECT coviddeaths.continent, coviddeaths.location, coviddeaths.date_reported, coviddeaths.population, covidvaccinations.new_vaccinations,
+SUM(new_vaccinations) OVER (Partition by coviddeaths.location ORDER BY coviddeaths.location, coviddeaths.date_reported) 
+AS NowVaccinated
+FROM coviddeaths 
+JOIN covidvaccinations
+	ON coviddeaths.location = covidvaccinations.location 
+	AND coviddeaths.date_reported = covidvaccinations.date_reported
+WHERE new_vaccinations IS NOT null 
+ORDER BY 2,3;
+
+--Use CTE 
+WITH PopvsVac (Continent, location, date_reported, population, new_vaccinations, NowVaccinated)
+as 
+(SELECT coviddeaths.continent, coviddeaths.location, coviddeaths.date_reported, coviddeaths.population, covidvaccinations.new_vaccinations,
+SUM(new_vaccinations) OVER (Partition by coviddeaths.location ORDER BY coviddeaths.location, coviddeaths.date_reported) 
+AS NowVaccinated
+FROM coviddeaths 
+JOIN covidvaccinations
+	ON coviddeaths.location = covidvaccinations.location 
+	AND coviddeaths.date_reported = covidvaccinations.date_reported
+WHERE new_vaccinations IS NOT null 
+ORDER BY 2,3
+)
+SELECT *, (NowVaccinated*100/Population) AS PercentPopulationCurrentlyVaccinated
+FROM PopvsVac;
+
+--Creating a view for Tableau
+CREATE VIEW PercentPopulationCurrentlyVaccinated AS
+SELECT coviddeaths.continent, coviddeaths.location, coviddeaths.date_reported, coviddeaths.population, covidvaccinations.new_vaccinations,
+SUM(new_vaccinations) OVER (Partition by coviddeaths.location ORDER BY coviddeaths.location, coviddeaths.date_reported) 
+AS NowVaccinated
+FROM coviddeaths 
+JOIN covidvaccinations
+	ON coviddeaths.location = covidvaccinations.location 
+	AND coviddeaths.date_reported = covidvaccinations.date_reported
+WHERE new_vaccinations IS NOT null 
+ORDER BY 2,3;
+
