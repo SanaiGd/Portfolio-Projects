@@ -1,0 +1,114 @@
+-- Data cleaning in SQL queries --
+
+SELECT * FROM housingdata;
+
+-- Populate property address data --
+
+SELECT * FROM housingdata
+--WHERE propertyaddress is NULL
+ORDER BY parcelid;
+--ParcelID should match up to address 
+
+SELECT a1.parcelid, a1.propertyaddress, b1.parcelid, b1.propertyaddress, 
+COALESCE(a1.propertyaddress,b1.propertyaddress) AS SaleAddress
+FROM housingdata AS a1
+JOIN housingdata AS b1
+	ON a1.parcelid=b1.parcelid 
+	AND a1.uniqueid != b1.uniqueid
+WHERE a1.propertyaddress is NULL
+
+-- DOES NOT WORK. This does fills all propertyaddress fields with one address. UPDATE housingdata  
+SET propertyaddress = COALESCE(a1.propertyaddress,b1.propertyaddress)
+FROM housingdata AS a1
+JOIN housingdata AS b1
+	ON a1.parcelid=b1.parcelid 
+	AND a1.uniqueid != b1.uniqueid
+WHERE a1.propertyaddress is NULL--
+
+
+-- Break address into individual columns (address, city, state) --
+
+SELECT 
+regexp_replace(propertyaddress, ',', '') AS PropertyAddress 
+FROM housingdata
+
+SELECT 
+split_part(propertyaddress, ',', 1 ) AS StreetAddress,
+split_part(propertyaddress, ',', 2 ) AS City
+FROM housingdata
+
+ALTER TABLE housingdata
+ADD PropertyStreetAddress VARCHAR(300) 
+
+UPDATE housingdata
+SET PropertyStreetAddress = split_part(propertyaddress, ',', 1 )
+
+ALTER TABLE housingdata
+ADD PropertyCity VARCHAR(300)
+
+UPDATE housingdata
+SET PropertyCity=split_part(propertyaddress, ',', 2 );
+
+-- I added propertystreetaddress and propertycity, now let's do Owner Addresses--
+
+SELECT owneraddress FROM housingdata;
+
+SELECT 
+regexp_replace(owneraddress, ',', '') AS OwnerAddress 
+FROM housingdata
+
+SELECT 
+split_part(owneraddress, ',', 1 ) AS StreetAddress,
+split_part(owneraddress, ',', 2 ) AS City,
+split_part(owneraddress, ',', 3 ) AS US_State
+FROM housingdata 
+
+ALTER TABLE housingdata
+ADD OwnerStreetAddress VARCHAR(300) 
+
+UPDATE housingdata
+SET OwnerStreetAddress = split_part(owneraddress, ',', 1 )
+
+ALTER TABLE housingdata
+ADD OwnerCity VARCHAR(300)
+
+UPDATE housingdata
+SET OwnerCity = split_part(owneraddress, ',', 2 )
+
+ALTER TABLE housingdata
+ADD OwnerState VARCHAR(300) 
+
+UPDATE housingdata
+SET OwnerState = split_part(owneraddress, ',', 3 );
+
+-- Change Y and N to "Yes" and "No" in "Sold as Vacant" field -- 
+
+SELECT DISTINCT (soldasvacant), COUNT (soldasvacant)
+FROM housingdata
+GROUP BY soldasvacant
+ORDER BY 2;
+
+SELECT soldasvacant,
+	CASE WHEN soldasvacant = 'Y' THEN 'Yes'	
+		 WHEN soldasvacant = 'N' THEN 'No'
+		 ELSE soldasvacant 
+	END
+FROM housingdata;
+
+UPDATE housingdata 
+SET soldasvacant = CASE WHEN soldasvacant = 'Y' THEN 'Yes'	
+		 WHEN soldasvacant = 'N' THEN 'No'
+		 ELSE soldasvacant 
+		 END;
+		 
+SELECT * FROM housingdata
+WHERE propertyaddress is NULL
+
+
+
+
+
+
+
+
+
